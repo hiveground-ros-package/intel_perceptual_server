@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="intel_perceptual_server" type="intel_perceptual_server" name="intel_perceptual_server"  output="screen">
+  </node>
+</launch>
