@@ -67,7 +67,13 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
 
 IntelPerceptualServer::~IntelPerceptualServer()
 {
+  if(ui->pushButtonStart->isChecked())
+  {
+    on_pushButtonStop_clicked();
+    Sleep(1000);
+  }
   pxc_session_->Release();
+  quit_thread_ = true;
   delete ui;
 }
 
