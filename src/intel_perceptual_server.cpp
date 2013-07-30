@@ -62,18 +62,13 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   ui->actionRecord->setActionGroup(mode_menu_action_group_);
   ui->actionLive->setChecked(true);
 
-  connect(this, SIGNAL(renderedImage(QImage)), this, SLOT(updateImage(QImage)));
+  connect(this, SIGNAL(dataRetrieved()), this, SLOT(updateUI()));
+  connect(this, SIGNAL(statusChanged(QString)), ui->statusbar, SLOT(showMessage(QString)));
 }
 
 IntelPerceptualServer::~IntelPerceptualServer()
-{
-  if(ui->pushButtonStart->isChecked())
-  {
-    on_pushButtonStop_clicked();
-    Sleep(1000);
-  }
+{  
   pxc_session_->Release();
-  quit_thread_ = true;
   delete ui;
 }
 
@@ -82,21 +77,27 @@ void IntelPerceptualServer::on_pushButtonStart_clicked()
   ui->pushButtonStart->setEnabled(false);
   ui->pushButtonStop->setEnabled(true);
   pipe_line_stop_=false;
-  QtConcurrent::run(this, &IntelPerceptualServer::pipeLine);
+  pipe_line_future_ = QtConcurrent::run(this, &IntelPerceptualServer::pipeLine);
 }
 
 void IntelPerceptualServer::on_pushButtonStop_clicked()
 {
   pipe_line_stop_ = true;
+  pipe_line_future_.waitForFinished();
   ui->pushButtonStart->setEnabled(true);
   ui->pushButtonStop->setEnabled(false);
 }
 
-void IntelPerceptualServer::updateImage(const QImage &image)
+
+void IntelPerceptualServer::updateUI()
 {
-  ui->labelImageDisplay->setPixmap(QPixmap::fromImage(image));
-  //ui->graphicsView->
+  mutex_.lock();
+  QPixmap pixmap = QPixmap::fromImage(last_image_);
+  mutex_.unlock();
+
+  ui->labelImageDisplay->setPixmap(pixmap);
 }
+
 
 void IntelPerceptualServer::populateDeviceMenu()
 {
@@ -166,12 +167,26 @@ void IntelPerceptualServer::pipeLine()
   /* Set Mode & Source */
   if(ui->actionRecord->isChecked())
   {
-    //pp = new UtilPipeline(0,GetRecordFile(),true);
-    //pp->QueryCapture()->SetFilter(GetCheckedDevice(hwndDlg));
+    QString file_name = QFileDialog::getSaveFileName(0, tr("Save File"),
+                                                    "",
+                                                    "All file (*.*)");
+    if(file_name.length() == 0)
+    {
+      QMessageBox::warning(this, "Intel Perceptual Server", "No save seleted");
+      return;
+    }
+    pp = new UtilPipeline(0, (pxcCHAR*)file_name.utf16(), true);
+    pp->QueryCapture()->SetFilter((pxcCHAR*)device_menu_action_group_->checkedAction()->text().utf16());
   }
   else if(ui->actionPlayback->isChecked())
   {
-    //pp=new UtilPipeline(0,GetPlaybackFile(),false);
+    QString file_name = QFileDialog::getOpenFileName(0, tr("Open File"), "", "All file (*.*)");
+    if(file_name.length() == 0)
+    {
+      QMessageBox::warning(this, "Intel Perceptual Server", "No file seleted");
+      return;
+    }
+    pp=new UtilPipeline(0,(pxcCHAR*)file_name.utf16(),false);
   }
   else
   {
@@ -182,50 +197,99 @@ void IntelPerceptualServer::pipeLine()
 
   /* Set Module */
   pp->EnableGesture((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
+  pp->EnableImage(PXCImage::COLOR_FORMAT_RGB32, 640, 480);
 
   /* Init */
-  ui->statusbar->showMessage("Init Started");
+  Q_EMIT statusChanged("Init Started");
 
   if (pp->Init())
   {
-    ui->statusbar->showMessage("Streaming");
-    disconnected_ = false;
+    Q_EMIT statusChanged("Streaming");
 
     while(!pipe_line_stop_ && !quit_thread_)
-    {
+    {     
       if (!pp->AcquireFrame(true))
         break;
+
       PXCGesture *gesture = pp->QueryGesture();
       PXCImage *depth = pp->QueryImage(PXCImage::IMAGE_TYPE_DEPTH);
+      PXCImage *rgb = pp->QueryImage(PXCImage::IMAGE_TYPE_COLOR);
 
-      PXCImage::ImageInfo info;
-      depth->QueryInfo(&info);
+      PXCImage::ImageInfo depth_info;
+      depth->QueryInfo(&depth_info);
 
-      PXCImage::ImageData data;
-      if(depth->AcquireAccess(PXCImage::ACCESS_READ,PXCImage::COLOR_FORMAT_RGB32, &data) >= PXC_STATUS_NO_ERROR)
+      PXCImage::ImageInfo rgb_info;
+      rgb->QueryInfo(&rgb_info);
+      ROS_DEBUG_THROTTLE(1.0, "depth_info %d %d %x %d", depth_info.width, depth_info.height, depth_info.format, depth_info.reserved);
+      ROS_DEBUG_THROTTLE(1.0, "rgb_info %d %d %x %d", rgb_info.width, rgb_info.height, rgb_info.format, rgb_info.reserved);
+
+      QImage image;
+      if(ui->radioButtonDisplayDepth->isChecked() || ui->radioButtonDisplayLabelmap->isChecked())
       {
-        QImage image(data.planes[0], info.width, info.height, QImage::Format_RGB32);
-        Q_EMIT renderedImage(image);
-        depth->ReleaseAccess(&data);
+        PXCImage *labelmap = depth;
+        PXCImage::ImageData depth_data;
+        bool dispose = false;
+
+        if( ui->radioButtonDisplayLabelmap->isChecked())
+        {
+          if (gesture->QueryBlobImage(PXCGesture::Blob::LABEL_SCENE,0,&labelmap)<PXC_STATUS_NO_ERROR)
+            return;
+          dispose = true;
+        }
+
+
+        if(labelmap->AcquireAccess(PXCImage::ACCESS_READ, PXCImage::COLOR_FORMAT_RGB32, &depth_data) >= PXC_STATUS_NO_ERROR)
+        {
+          ROS_DEBUG_THROTTLE(1.0, "depth_data %x %d %x", depth_data.format, depth_data.reserved, depth_data.type);
+          image = QImage(depth_data.planes[0], depth_info.width, depth_info.height, QImage::Format_RGB32);
+          depth->ReleaseAccess(&depth_data);
+        }
+
+        if(dispose)
+          labelmap->Release();
       }
+      else if(ui->radioButtonDisplayColor->isChecked())
+      {
+        PXCImage::ImageData rgb_data;
+        if(rgb->AcquireAccess(PXCImage::ACCESS_READ, rgb_info.format, &rgb_data) >= PXC_STATUS_NO_ERROR)
+        {
+          ROS_DEBUG_THROTTLE(1.0, "rgb_data %x %d %x", rgb_data.format, rgb_data.reserved, rgb_data.type);
+          image = QImage(rgb_data.planes[0], rgb_info.width, rgb_info.height, QImage::Format_RGB888).convertToFormat(QImage::Format_RGB32).rgbSwapped();
+          rgb->ReleaseAccess(&rgb_data);
+        }
+      }
+
+      mutex_.lock();
+      last_image_ = image.copy();
+      mutex_.unlock();
+
+      Q_EMIT dataRetrieved();
+
       pp->ReleaseFrame();
     }
   }
   else
   {
-    ui->statusbar->showMessage("Init Failed");
+    Q_EMIT statusChanged("Init Failed");
     sts=false;
   }
 
   pp->Close();
+
   pp->Release();
   if(sts)
-    ui->statusbar->showMessage("Stopped");
-
+    Q_EMIT statusChanged("Stopped");
 }
 
 void IntelPerceptualServer::closeEvent(QCloseEvent *event)
-{
+{ 
+  ROS_INFO("Close!");
+  if(!pipe_line_stop_)
+  {
+    ROS_INFO("Stop!");
+    on_pushButtonStop_clicked();
+  }
+
   quit_thread_ = true;
   event->accept();
 }

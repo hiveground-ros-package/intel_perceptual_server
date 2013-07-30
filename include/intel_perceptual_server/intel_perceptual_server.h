@@ -39,6 +39,7 @@
 #include <pxcgesture.h>
 #include <pxcsmartptr.h>
 #include <QMutex>
+#include <QFuture>
 
 namespace Ui {
   class MainWindow;
@@ -60,11 +61,11 @@ protected Q_SLOTS:
   void on_pushButtonStart_clicked();
   void on_pushButtonStop_clicked();
 
-  void updateImage(const QImage &image);
+  void updateUI();
 
 Q_SIGNALS:
-  void renderedImage(const QImage &image);
-
+  void dataRetrieved();
+  void statusChanged(QString status);
 
 protected:
   void populateDeviceMenu();
@@ -81,8 +82,10 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
   bool pipe_line_stop_;
+  QFuture<void> pipe_line_future_;
+  QImage last_image_;
   QMutex mutex_;
-  bool disconnected_;
+
 
   QVector<QAction*> device_menu_actions_;
   QActionGroup *device_menu_action_group_;
@@ -93,8 +96,7 @@ private:
   QActionGroup *mode_menu_action_group_;
 
 
-  PXCSession *pxc_session_;
-  
+  PXCSession *pxc_session_;  
 };
 
 #endif // INTEL_PERCEPTUAL_SERVER_H

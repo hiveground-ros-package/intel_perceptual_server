@@ -63,14 +63,14 @@
    <property name="minimumSize">
     <size>
      <width>112</width>
-     <height>284</height>
+     <height>382</height>
     </size>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QVBoxLayout" name="verticalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
       <widget class="QGroupBox" name="groupBox">
        <property name="title">
@@ -81,6 +81,9 @@
          <widget class="QRadioButton" name="radioButtonDisplayDepth">
           <property name="text">
            <string>Depth</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -116,17 +119,56 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBoxScale">
-       <property name="text">
-        <string>Scale</string>
+      <widget class="QGroupBox" name="groupBox_2">
+       <property name="title">
+        <string>Drawing</string>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBoxMirror">
-       <property name="text">
-        <string>Mirror</string>
-       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QCheckBox" name="checkBoxScale">
+          <property name="text">
+           <string>Scale</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoxMirror">
+          <property name="text">
+           <string>Mirror</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoxGeoNode">
+          <property name="text">
+           <string>GeoNode</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoGesture">
+          <property name="text">
+           <string>Gesture</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoxParam">
+          <property name="text">
+           <string>Param</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </widget>
      </item>
      <item>

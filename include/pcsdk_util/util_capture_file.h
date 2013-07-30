@@ -14,28 +14,28 @@ Copyright(c) 2012-2013 Intel Corporation. All Rights Reserved.
 class UtilCaptureFile: public UtilCapture {
 public:
 
-    UtilCaptureFile(PXCSession *session, pxcCHAR *file, pxcBool recording);
-    virtual ~UtilCaptureFile(void);
+  UtilCaptureFile(PXCSession *session, pxcCHAR *file, pxcBool recording);
+  virtual ~UtilCaptureFile(void);
 
-    virtual void   SetMask(PXCImage::ImageType t) { types=t; }
-    virtual void   SetPause(pxcBool pause=false);
-	virtual void   SetRealtime(pxcBool realtime=true);
-    virtual void   SetPosition(pxcI32 frame);
-    virtual pxcI32 QueryPosition(void);
+  virtual void   SetMask(PXCImage::ImageType t) { types=t; }
+  virtual void   SetPause(pxcBool pause=false);
+  virtual void   SetRealtime(pxcBool realtime=true);
+  virtual void   SetPosition(pxcI32 frame);
+  virtual pxcI32 QueryPosition(void);
 
-	virtual pxcStatus LocateStreams(PXCCapture::AudioStream::DataDesc *inputs) { return UtilCapture::LocateStreams(inputs); }
-	virtual pxcStatus LocateStreams(PXCCapture::VideoStream::DataDesc *inputs) { return UtilCapture::LocateStreams(inputs); }
-	virtual pxcStatus LocateStreams(std::vector<PXCCapture::VideoStream::DataDesc*> &vinputs) { return UtilCapture::LocateStreams(vinputs); }
-	virtual pxcStatus LocateStreams(std::vector<PXCCapture::AudioStream::DataDesc*> &ainputs) { return UtilCapture::LocateStreams(ainputs); }
-    virtual pxcStatus LocateStreams(std::vector<PXCCapture::VideoStream::DataDesc*> &vinputs,std::vector<PXCCapture::AudioStream::DataDesc*> &ainputs);
+  virtual pxcStatus LocateStreams(PXCCapture::AudioStream::DataDesc *inputs) { return UtilCapture::LocateStreams(inputs); }
+  virtual pxcStatus LocateStreams(PXCCapture::VideoStream::DataDesc *inputs) { return UtilCapture::LocateStreams(inputs); }
+  virtual pxcStatus LocateStreams(std::vector<PXCCapture::VideoStream::DataDesc*> &vinputs) { return UtilCapture::LocateStreams(vinputs); }
+  virtual pxcStatus LocateStreams(std::vector<PXCCapture::AudioStream::DataDesc*> &ainputs) { return UtilCapture::LocateStreams(ainputs); }
+  virtual pxcStatus LocateStreams(std::vector<PXCCapture::VideoStream::DataDesc*> &vinputs,std::vector<PXCCapture::AudioStream::DataDesc*> &ainputs);
 
 protected:
-    pxcHDL                      file;
-    pxcCHAR                     *filename;
-    pxcBool                     recording;
-    PXCImage::ImageType         types;
+  pxcHDL                      file;
+  pxcCHAR                     *filename;
+  pxcBool                     recording;
+  PXCImage::ImageType         types;
 
-    virtual pxcStatus PXCAPI CreateCapture(pxcU32 index, PXCCapture **capture);
-    void SaveStreamInfo(void);
+  virtual pxcStatus PXCAPI CreateCapture(pxcU32 index, PXCCapture **capture);
+  void SaveStreamInfo(void);
 };
 
