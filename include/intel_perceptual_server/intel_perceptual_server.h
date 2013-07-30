@@ -63,10 +63,10 @@ protected Q_SLOTS:
   void on_actionPlayback_triggered(bool checked);
   void on_actionRecord_triggered(bool checked);
 
-  void updateUI();
+  void updateUI(const QImage& image);
 
 Q_SIGNALS:
-  void dataRetrieved();
+  void dataRetrieved(QImage image);
   void statusChanged(QString status);
 
 protected:
@@ -85,7 +85,6 @@ private:
   ros::NodeHandle nhp_;
   bool pipe_line_stop_;
   QFuture<void> pipe_line_future_;
-  QImage last_image_;
   QMutex mutex_;
   QString record_file_name_;
   QString playback_file_name_;
@@ -100,6 +99,10 @@ private:
 
 
   PXCSession *pxc_session_;  
+  PXCGesture::GeoNode geo_nodes_[2][11];
+  PXCGesture::Gesture gestures_[2];
+
+  ros::Publisher arm_publisher_;
 };
 
 #endif // INTEL_PERCEPTUAL_SERVER_H

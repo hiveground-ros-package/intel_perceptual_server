@@ -1,0 +1,18 @@
+<RCC>
+  <qresource prefix="gestures">
+    <file>big5.png</file>
+    <file>circle.png</file>
+    <file>none.png</file>
+    <file>peace.png</file>
+    <file>swipe_down.png</file>
+    <file>swipe_left.png</file>
+    <file>swipe_right.png</file>
+    <file>swipe_up.png</file>
+    <file>thumb_down.png</file>
+    <file>thumb_up.png</file>
+    <file>wave.png</file>
+  </qresource>
+  <qresource prefix="icons">
+    <file>hiveground.png</file>
+  </qresource>
+</RCC>

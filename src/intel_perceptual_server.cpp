@@ -36,6 +36,7 @@
 #include <QtGui>
 #include <QtConcurrentRun>
 #include <util_pipeline.h>
+#include <interaction_msgs/Arms.h>
 
 IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   QMainWindow(parent),
@@ -62,8 +63,11 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   ui->actionRecord->setActionGroup(mode_menu_action_group_);
   ui->actionLive->setChecked(true);
 
-  connect(this, SIGNAL(dataRetrieved()), this, SLOT(updateUI()));
+  connect(this, SIGNAL(dataRetrieved(QImage)), this, SLOT(updateUI(QImage)));
   connect(this, SIGNAL(statusChanged(QString)), ui->statusbar, SLOT(showMessage(QString)));
+
+
+  arm_publisher_ = nhp_.advertise<interaction_msgs::Arm>("arms", 1);
 }
 
 IntelPerceptualServer::~IntelPerceptualServer()
@@ -117,13 +121,127 @@ void IntelPerceptualServer::on_actionRecord_triggered(bool checked)
 }
 
 
-void IntelPerceptualServer::updateUI()
+void IntelPerceptualServer::updateUI(const QImage &image)
 {
+  QPixmap pixmap = QPixmap::fromImage(image);
+  QPainter painter(&pixmap);
+  QPen pen;  // creates a default pen
+  pen.setWidth(3);
+
+  interaction_msgs::Arms arms_msg;
+
   mutex_.lock();
-  QPixmap pixmap = QPixmap::fromImage(last_image_);
+  for (int i = 0; i < 2; i++)
+  {
+    interaction_msgs::Arm arm_msg;
+    arm_msg.fingers.resize(5);
+    arm_msg.arm_id = i;
+    for (int j = 0; j < 11; j++)
+    {
+      if (geo_nodes_[i][j].body <= 0)
+        continue;
+      int sz = (j == 0) ? 10 : ((geo_nodes_[i][j].radiusImage>5)?(int)geo_nodes_[i][j].radiusImage:5);
+      int x=(int)geo_nodes_[i][j].positionImage.x;
+      int y=(int)geo_nodes_[i][j].positionImage.y;
+      (j < 6 || j == 0) ? ((j == 0) ? pen.setColor(Qt::blue) : pen.setColor(Qt::red)) : ((j == 10) ? pen.setColor(Qt::yellow) : pen.setColor(Qt::green));
+      painter.setPen(pen);
+      painter.drawEllipse(x-sz, y-sz, sz, sz);
+
+      if(j == 0) //plam
+      {
+        arm_msg.hand.translation.x = geo_nodes_[i][j].positionWorld.x;
+        arm_msg.hand.translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.hand.translation.z = geo_nodes_[i][j].positionWorld.z;
+        arm_msg.hand.rotation.w = 1;
+      }
+      else if(j < 6) //fingers
+      {
+        arm_msg.fingers[j-1].translation.x = geo_nodes_[i][j].positionWorld.x;
+        arm_msg.fingers[j-1].translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.fingers[j-1].translation.z = geo_nodes_[i][j].positionWorld.z;
+        arm_msg.fingers[j-1].rotation.w = 1;
+      }
+      else if(j == 10) //arm
+      {
+        arm_msg.arm.translation.x = geo_nodes_[i][j].positionWorld.x;
+        arm_msg.arm.translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.arm.translation.z = geo_nodes_[i][j].positionWorld.z;
+        arm_msg.arm.rotation.w = 1;
+      }
+
+    }
+
+    //publish only arm with plam
+    if (geo_nodes_[i][0].body > 0)
+    {
+      arms_msg.arms.push_back(arm_msg);
+    }
+  }
+
+
+
+  for (int i = 0; i < 2; i++)
+  {
+    QLabel *label = (i == 0) ? ui->labelGestureLeft : ui->labelGestureRight;
+    QPixmap icon_pixmap;
+    if (gestures_[i].body <= 0)
+    {
+      continue;
+    }
+
+    switch(gestures_[i].label)
+    {
+      case PXCGesture::Gesture::LABEL_NAV_SWIPE_LEFT:
+        icon_pixmap.load(":/gestures/swipe_left.png");
+        break;
+      case PXCGesture::Gesture::LABEL_NAV_SWIPE_RIGHT:
+        icon_pixmap.load(":/gestures/swipe_right.png");
+        break;
+      case PXCGesture::Gesture::LABEL_NAV_SWIPE_UP:
+        icon_pixmap.load(":/gestures/swipe_up.png");
+        break;
+      case PXCGesture::Gesture::LABEL_NAV_SWIPE_DOWN:
+        icon_pixmap.load(":/gestures/swipe_down.png");
+        break;
+      case PXCGesture::Gesture::LABEL_HAND_WAVE:
+        icon_pixmap.load(":/gestures/wave.png");
+        break;
+      case PXCGesture::Gesture::LABEL_HAND_CIRCLE:
+        icon_pixmap.load(":/gestures/circle.png");
+        break;
+      case PXCGesture::Gesture::LABEL_POSE_THUMB_UP:
+        icon_pixmap.load(":/gestures/thumb_up.png");
+        break;
+      case PXCGesture::Gesture::LABEL_POSE_THUMB_DOWN:
+        icon_pixmap.load(":/gestures/thumb_down.png");
+        break;
+      case PXCGesture::Gesture::LABEL_POSE_PEACE:
+        icon_pixmap.load(":/gestures/peace.png");
+        break;
+      case PXCGesture::Gesture::LABEL_POSE_BIG5:
+        icon_pixmap.load(":/gestures/big5.png");
+        break;
+      default:
+        icon_pixmap.load(":/gestures/none.png");
+        break;
+    }
+    if(!icon_pixmap.isNull())
+      label->setPixmap(icon_pixmap.scaled(48,48));
+  }
   mutex_.unlock();
 
+  if(arm_publisher_.getNumSubscribers() != 0)
+  {
+    ROS_INFO_THROTTLE(1.0, "pub");
+    arms_msg.header.stamp = ros::Time::now();
+    arms_msg.header.frame_id = "intel_perceptual_server";
+    arm_publisher_.publish(arms_msg);
+  }
+
   ui->labelImageDisplay->setPixmap(pixmap);
+
+
+
 }
 
 
@@ -274,11 +392,15 @@ void IntelPerceptualServer::pipeLine()
       }
 
       mutex_.lock();
-      last_image_ = image.copy();
+      gesture->QueryNodeData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_PRIMARY,10,geo_nodes_[0]);
+      gesture->QueryNodeData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_SECONDARY,10,geo_nodes_[1]);
+      gesture->QueryNodeData(0,PXCGesture::GeoNode::LABEL_BODY_ELBOW_PRIMARY,&geo_nodes_[0][10]);
+      gesture->QueryNodeData(0,PXCGesture::GeoNode::LABEL_BODY_ELBOW_SECONDARY,&geo_nodes_[1][10]);
+      gesture->QueryGestureData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_PRIMARY,0,&gestures_[0]);
+      gesture->QueryGestureData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_SECONDARY,0,&gestures_[1]);
       mutex_.unlock();
 
-      Q_EMIT dataRetrieved();
-
+      Q_EMIT dataRetrieved(image.copy());
       pp->ReleaseFrame();
     }
   }
@@ -297,13 +419,10 @@ void IntelPerceptualServer::pipeLine()
 
 void IntelPerceptualServer::closeEvent(QCloseEvent *event)
 { 
-  ROS_INFO("Close!");
   if(!pipe_line_stop_)
   {
-    ROS_INFO("Stop!");
     on_pushButtonStop_clicked();
   }
-
   quit_thread_ = true;
   event->accept();
 }

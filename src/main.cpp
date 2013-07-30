@@ -58,7 +58,7 @@ void spin_function()
 
 int main(int argc, char *argv[])
 {
-  ros::init(argc, argv, "midem_user_interaction", ros::init_options::NoSigintHandler);  
+  ros::init(argc, argv, "intel_perceptual_server", ros::init_options::NoSigintHandler);
   QFuture<void> future = QtConcurrent::run(spin_function);
 
 
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
   g_initialized = true;
   int ret = a.exec();
 
-  //spin_thread.join();
+  future.waitForFinished();
 
   return ret;
 }
