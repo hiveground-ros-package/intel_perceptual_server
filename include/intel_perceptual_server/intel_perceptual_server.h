@@ -60,6 +60,8 @@ public:
 protected Q_SLOTS:
   void on_pushButtonStart_clicked();
   void on_pushButtonStop_clicked();
+  void on_actionPlayback_triggered(bool checked);
+  void on_actionRecord_triggered(bool checked);
 
   void updateUI();
 
@@ -85,7 +87,8 @@ private:
   QFuture<void> pipe_line_future_;
   QImage last_image_;
   QMutex mutex_;
-
+  QString record_file_name_;
+  QString playback_file_name_;
 
   QVector<QAction*> device_menu_actions_;
   QActionGroup *device_menu_action_group_;

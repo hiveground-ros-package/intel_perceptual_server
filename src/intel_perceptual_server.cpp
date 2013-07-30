@@ -76,6 +76,22 @@ void IntelPerceptualServer::on_pushButtonStart_clicked()
 {
   ui->pushButtonStart->setEnabled(false);
   ui->pushButtonStop->setEnabled(true);
+  if(ui->actionRecord->isChecked())
+  {
+    if(record_file_name_.length() == 0)
+    {
+      QMessageBox::warning(this, "Intel Perceptual Server", "No save file seleted");
+      return;
+    }
+  }
+  else if(ui->actionPlayback->isChecked())
+  {
+    if(playback_file_name_.length() == 0)
+    {
+      QMessageBox::warning(this, "Intel Perceptual Server", "No file seleted");
+      return;
+    }
+  }
   pipe_line_stop_=false;
   pipe_line_future_ = QtConcurrent::run(this, &IntelPerceptualServer::pipeLine);
 }
@@ -86,6 +102,18 @@ void IntelPerceptualServer::on_pushButtonStop_clicked()
   pipe_line_future_.waitForFinished();
   ui->pushButtonStart->setEnabled(true);
   ui->pushButtonStop->setEnabled(false);
+}
+
+void IntelPerceptualServer::on_actionPlayback_triggered(bool checked)
+{
+  if(checked)
+    playback_file_name_ = QFileDialog::getOpenFileName(0, tr("Open File"), "", "All file (*.*)");
+}
+
+void IntelPerceptualServer::on_actionRecord_triggered(bool checked)
+{
+  if(checked)
+    record_file_name_ = QFileDialog::getSaveFileName(0, "Save File", "", "All file (*.*)");
 }
 
 
@@ -166,27 +194,13 @@ void IntelPerceptualServer::pipeLine()
 
   /* Set Mode & Source */
   if(ui->actionRecord->isChecked())
-  {
-    QString file_name = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "",
-                                                    "All file (*.*)");
-    if(file_name.length() == 0)
-    {
-      QMessageBox::warning(this, "Intel Perceptual Server", "No save seleted");
-      return;
-    }
-    pp = new UtilPipeline(0, (pxcCHAR*)file_name.utf16(), true);
+  {  
+    pp = new UtilPipeline(0, (pxcCHAR*)record_file_name_.utf16(), true);
     pp->QueryCapture()->SetFilter((pxcCHAR*)device_menu_action_group_->checkedAction()->text().utf16());
   }
   else if(ui->actionPlayback->isChecked())
   {
-    QString file_name = QFileDialog::getOpenFileName(0, tr("Open File"), "", "All file (*.*)");
-    if(file_name.length() == 0)
-    {
-      QMessageBox::warning(this, "Intel Perceptual Server", "No file seleted");
-      return;
-    }
-    pp=new UtilPipeline(0,(pxcCHAR*)file_name.utf16(),false);
+    pp=new UtilPipeline(0,(pxcCHAR*)playback_file_name_.utf16(),false);
   }
   else
   {
@@ -197,7 +211,7 @@ void IntelPerceptualServer::pipeLine()
 
   /* Set Module */
   pp->EnableGesture((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
-  pp->EnableImage(PXCImage::COLOR_FORMAT_RGB32, 640, 480);
+  pp->EnableImage(PXCImage::COLOR_FORMAT_RGB32, 1280, 720);
 
   /* Init */
   Q_EMIT statusChanged("Init Started");
