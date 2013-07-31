@@ -36,8 +36,11 @@
 
 #include <QMainWindow>
 #include <ros/ros.h>
+#include <pxcprojection.h>
 #include <pxcgesture.h>
 #include <pxcsmartptr.h>
+#include <pxcmetadata.h>
+
 #include <QMutex>
 #include <QFuture>
 
@@ -101,6 +104,8 @@ private:
   PXCSession *pxc_session_;  
   PXCGesture::GeoNode geo_nodes_[2][11];
   PXCGesture::Gesture gestures_[2];
+  pxcUID projection_value_;
+  PXCSmartPtr<PXCProjection> projection_;
 
   ros::Publisher arms_publisher_;
 };

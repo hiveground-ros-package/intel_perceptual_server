@@ -167,13 +167,6 @@
          </widget>
         </item>
         <item>
-         <widget class="QRadioButton" name="radioButtonDisplayUV">
-          <property name="text">
-           <string>UV</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="QRadioButton" name="radioButtonDisplayProjection">
           <property name="text">
            <string>Projection</string>

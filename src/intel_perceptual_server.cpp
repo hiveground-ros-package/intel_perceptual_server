@@ -327,17 +327,64 @@ void IntelPerceptualServer::pipeLine()
     pp = new UtilPipeline();
     pp->QueryCapture()->SetFilter((pxcCHAR*)device_menu_action_group_->checkedAction()->text().utf16());
   }
-  bool sts=true;
+
 
   /* Set Module */
+  pp->EnableImage(PXCImage::COLOR_FORMAT_RGB24, 1280, 720);
+  pp->EnableImage(PXCImage::COLOR_FORMAT_DEPTH);
   pp->EnableGesture((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
-  pp->EnableImage(PXCImage::COLOR_FORMAT_RGB32, 1280, 720);
 
   /* Init */
   Q_EMIT statusChanged("Init Started");
 
+  bool init_ok = true;
+
+  PXCPoint3DF32 *pos2d = 0;       // array of depth coordinates to be mapped onto color coordinates
+  PXCPointF32 *posc = 0;          // array of mapped color coordinates
+  pxcF32 dvalues[2];              // special depth values for saturated and low-confidence pixels
+
   if (pp->Init())
   {
+
+    /* Setup */
+    PXCCapture::VideoStream::ProfileInfo pcolor;
+    pp->QueryCapture()->QueryVideoStream(0)->QueryProfile(&pcolor);
+    PXCCapture::VideoStream::ProfileInfo pdepth;
+    pp->QueryCapture()->QueryVideoStream(1)->QueryProfile(&pdepth);
+
+    ROS_INFO("Depth profile: %d %d %x", pdepth.imageInfo.width, pdepth.imageInfo.height, pdepth.imageInfo.format);
+    ROS_INFO("Color profile: %d %d %x", pcolor.imageInfo.width, pcolor.imageInfo.height, pcolor.imageInfo.format);
+
+    pxcStatus sts;
+    sts = pp->QueryCapture()->QueryDevice()->QueryPropertyAsUID(PXCCapture::Device::PROPERTY_PROJECTION_SERIALIZABLE,&projection_value_);
+
+    if (sts < PXC_STATUS_NO_ERROR)
+    {
+      ROS_ERROR("Cannot query projection property");
+      pp->Close();
+      pp->Release();
+      return;
+    }
+
+    pp->QueryCapture()->QueryDevice()->QueryProperty(PXCCapture::Device::PROPERTY_DEPTH_LOW_CONFIDENCE_VALUE,&dvalues[0]);
+    pp->QueryCapture()->QueryDevice()->QueryProperty(PXCCapture::Device::PROPERTY_DEPTH_SATURATION_VALUE,&dvalues[1]);
+
+    pp->QuerySession()->DynamicCast<PXCMetadata>()->CreateSerializable<PXCProjection>(projection_value_, &projection_);
+
+
+    PXCSmartPtr<PXCImage> color2;   // the color image after projection
+    PXCSmartPtr<PXCAccelerator> accelerator;
+    pp->QuerySession()->CreateAccelerator(&accelerator);
+    accelerator->CreateImage(&pcolor.imageInfo, 0, 0, &color2);
+
+    int npoints = pdepth.imageInfo.width*pdepth.imageInfo.height;
+    pos2d = (PXCPoint3DF32 *)new PXCPoint3DF32[npoints];
+    posc = (PXCPointF32 *)new PXCPointF32[npoints];
+    int k = 0;
+    for (float y=0;y<pdepth.imageInfo.height;y++)
+      for (float x=0;x<pdepth.imageInfo.width;x++,k++)
+        pos2d[k].x=x, pos2d[k].y=y;
+
     Q_EMIT statusChanged("Streaming");
 
     while(!pipe_line_stop_ && !quit_thread_)
@@ -349,13 +396,7 @@ void IntelPerceptualServer::pipeLine()
       PXCImage *depth = pp->QueryImage(PXCImage::IMAGE_TYPE_DEPTH);
       PXCImage *rgb = pp->QueryImage(PXCImage::IMAGE_TYPE_COLOR);
 
-      PXCImage::ImageInfo depth_info;
-      depth->QueryInfo(&depth_info);
 
-      PXCImage::ImageInfo rgb_info;
-      rgb->QueryInfo(&rgb_info);
-      ROS_DEBUG_THROTTLE(1.0, "depth_info %d %d %x %d", depth_info.width, depth_info.height, depth_info.format, depth_info.reserved);
-      ROS_DEBUG_THROTTLE(1.0, "rgb_info %d %d %x %d", rgb_info.width, rgb_info.height, rgb_info.format, rgb_info.reserved);
 
       QImage image;
       if(ui->radioButtonDisplayDepth->isChecked() || ui->radioButtonDisplayLabelmap->isChecked())
@@ -374,8 +415,7 @@ void IntelPerceptualServer::pipeLine()
 
         if(labelmap->AcquireAccess(PXCImage::ACCESS_READ, PXCImage::COLOR_FORMAT_RGB32, &depth_data) >= PXC_STATUS_NO_ERROR)
         {
-          ROS_DEBUG_THROTTLE(1.0, "depth_data %x %d %x", depth_data.format, depth_data.reserved, depth_data.type);
-          image = QImage(depth_data.planes[0], depth_info.width, depth_info.height, QImage::Format_RGB32);
+          image = QImage(depth_data.planes[0], pdepth.imageInfo.width, pdepth.imageInfo.height, QImage::Format_RGB32);
           depth->ReleaseAccess(&depth_data);
         }
 
@@ -385,11 +425,53 @@ void IntelPerceptualServer::pipeLine()
       else if(ui->radioButtonDisplayColor->isChecked())
       {
         PXCImage::ImageData rgb_data;
-        if(rgb->AcquireAccess(PXCImage::ACCESS_READ, rgb_info.format, &rgb_data) >= PXC_STATUS_NO_ERROR)
+        if(rgb->AcquireAccess(PXCImage::ACCESS_READ, pcolor.imageInfo.format, &rgb_data) >= PXC_STATUS_NO_ERROR)
         {
-          ROS_DEBUG_THROTTLE(1.0, "rgb_data %x %d %x", rgb_data.format, rgb_data.reserved, rgb_data.type);
-          image = QImage(rgb_data.planes[0], rgb_info.width, rgb_info.height, QImage::Format_RGB888).convertToFormat(QImage::Format_RGB32).rgbSwapped();
+          image = QImage(rgb_data.planes[0], pcolor.imageInfo.width, pcolor.imageInfo.height, QImage::Format_RGB888).convertToFormat(QImage::Format_RGB32).rgbSwapped();
           rgb->ReleaseAccess(&rgb_data);
+        }
+      }
+      else if(ui->radioButtonDisplayProjection->isChecked())
+      {
+        PXCImage::ImageData ddepth;
+        depth->AcquireAccess(PXCImage::ACCESS_READ, &ddepth);
+        int dwidth2 = ddepth.pitches[0]/sizeof(pxcU16); // aligned depth width
+        if (projection_.IsValid())
+        {
+          color2->CopyData(rgb);
+          PXCImage::ImageData dcolor;
+          color2->AcquireAccess(PXCImage::ACCESS_READ_WRITE, PXCImage::COLOR_FORMAT_RGB24,&dcolor);
+          int cwidth2 = dcolor.pitches[0] / 3; // aligned color width
+          ROS_INFO_ONCE("cwidth2 %d", cwidth2);
+
+
+          for (pxcU32 y=0,k=0;y<pdepth.imageInfo.height;y++)
+            for (pxcU32 x=0;x<pdepth.imageInfo.width;x++,k++)
+              pos2d[k].z=((short*)ddepth.planes[0])[y*dwidth2+x];
+          projection_->MapDepthToColorCoordinates(pdepth.imageInfo.width*pdepth.imageInfo.height, pos2d, posc);
+
+
+          pxcBYTE* ptr;
+          for (pxcU32 y=0,k=0;y<pdepth.imageInfo.height;y++)
+          {
+            for (pxcU32 x=0;x<pdepth.imageInfo.width;x++,k++)
+            {
+              int xx=(int)(posc[k].x+0.5f), yy= (int) (posc[k].y+0.5f);
+              if (xx<0 || yy<0 || xx>=(int) pcolor.imageInfo.width || yy>=(int)pcolor.imageInfo.height) continue;
+              if (pos2d[k].z==dvalues[0] || pos2d[k].z==dvalues[1]) continue; // no mapping based on unreliable depth values
+              ptr = dcolor.planes[0] + ((yy*cwidth2)+(xx)) * 3;
+              ptr[0] = 0x00;
+              ptr[1] = 0x00;
+              ptr[2] = 0xFF;
+            }
+          }
+
+          image = QImage(dcolor.planes[0], pcolor.imageInfo.width, pcolor.imageInfo.height, QImage::Format_RGB888).convertToFormat(QImage::Format_RGB32).rgbSwapped();
+          color2->ReleaseAccess(&dcolor);
+        }
+        else
+        {
+          ROS_WARN("projection is not valid");
         }
       }
 
@@ -402,20 +484,24 @@ void IntelPerceptualServer::pipeLine()
       gesture->QueryGestureData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_SECONDARY,0,&gestures_[1]);
       mutex_.unlock();
 
-      Q_EMIT dataRetrieved(image.copy());
+      if(!image.isNull())
+        Q_EMIT dataRetrieved(image.copy());
       pp->ReleaseFrame();
     }
   }
   else
   {
     Q_EMIT statusChanged("Init Failed");
-    sts=false;
+    init_ok = false;
   }
 
   pp->Close();
-
   pp->Release();
-  if(sts)
+
+  if (pos2d) delete [] pos2d;
+  if (posc) delete [] posc;
+
+  if(init_ok)
     Q_EMIT statusChanged("Stopped");
 }
 
