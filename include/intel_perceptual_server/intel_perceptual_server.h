@@ -40,6 +40,7 @@
 #include <pxcgesture.h>
 #include <pxcsmartptr.h>
 #include <pxcmetadata.h>
+#include <util_pipeline.h>
 
 #include <QMutex>
 #include <QFuture>
@@ -77,6 +78,10 @@ protected:
   void populateModuleMenu();
 
   void pipeLine();
+  void mapXY(float &x, float &y, PXCImage* depth, PXCImage::ImageInfo *cinfo);
+  void mapXY(float &x,float &y,float d, PXCCapture::Device *dev, PXCSession *session);
+
+
 
 protected: //Qt
   void closeEvent(QCloseEvent *evencurrentItemt);
@@ -99,13 +104,15 @@ private:
   QActionGroup *module_menu_action_group_;
 
   QActionGroup *mode_menu_action_group_;
-
+  QActionGroup *resolution_menu_action_group_;
 
   PXCSession *pxc_session_;  
   PXCGesture::GeoNode geo_nodes_[2][11];
+  PXCGesture::GeoNode geo_nodes_color_[2][11];
   PXCGesture::Gesture gestures_[2];
   pxcUID projection_value_;
   PXCSmartPtr<PXCProjection> projection_;
+  QVector<PXCFaceAnalysis::Detection::Data> face_detection_data_;
 
   ros::Publisher arms_publisher_;
 };

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>774</width>
+    <width>819</width>
     <height>545</height>
    </rect>
   </property>
@@ -21,6 +21,12 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="1">
      <widget class="QLabel" name="labelImageDisplay">
+      <property name="minimumSize">
+       <size>
+        <width>640</width>
+        <height>480</height>
+       </size>
+      </property>
       <property name="text">
        <string>Image</string>
       </property>
@@ -36,7 +42,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>774</width>
+     <width>819</width>
      <height>24</height>
     </rect>
    </property>
@@ -58,15 +64,24 @@
     <addaction name="actionPlayback"/>
     <addaction name="actionRecord"/>
    </widget>
+   <widget class="QMenu" name="menuResolution">
+    <property name="title">
+     <string>Resolution</string>
+    </property>
+    <addaction name="action640x360"/>
+    <addaction name="action640x480"/>
+    <addaction name="action1280x720"/>
+   </widget>
    <addaction name="menuDevice"/>
    <addaction name="menuModule"/>
    <addaction name="menuMode"/>
+   <addaction name="menuResolution"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget">
    <property name="minimumSize">
     <size>
-     <width>132</width>
+     <width>157</width>
      <height>452</height>
     </size>
    </property>
@@ -167,11 +182,22 @@
          </widget>
         </item>
         <item>
-         <widget class="QRadioButton" name="radioButtonDisplayProjection">
-          <property name="text">
-           <string>Projection</string>
-          </property>
-         </widget>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QRadioButton" name="radioButtonDisplayProjection">
+            <property name="text">
+             <string>Projection</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBoxProjectAll">
+            <property name="text">
+             <string>All</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
       </widget>
@@ -284,6 +310,33 @@
    </property>
    <property name="text">
     <string>Record</string>
+   </property>
+  </action>
+  <action name="action640x480">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>640x480</string>
+   </property>
+  </action>
+  <action name="action640x360">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>640x360</string>
+   </property>
+  </action>
+  <action name="action1280x720">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>1280x720</string>
    </property>
   </action>
  </widget>
