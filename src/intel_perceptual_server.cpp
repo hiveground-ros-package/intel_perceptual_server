@@ -67,7 +67,7 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   connect(this, SIGNAL(statusChanged(QString)), ui->statusbar, SLOT(showMessage(QString)));
 
 
-  arm_publisher_ = nhp_.advertise<interaction_msgs::Arm>("arms", 1);
+  arms_publisher_ = nhp_.advertise<interaction_msgs::Arms>("arms", 1);
 }
 
 IntelPerceptualServer::~IntelPerceptualServer()
@@ -230,15 +230,17 @@ void IntelPerceptualServer::updateUI(const QImage &image)
   }
   mutex_.unlock();
 
-  if(arm_publisher_.getNumSubscribers() != 0)
+  if(arms_publisher_.getNumSubscribers() != 0)
   {
-    ROS_INFO_THROTTLE(1.0, "pub");
     arms_msg.header.stamp = ros::Time::now();
     arms_msg.header.frame_id = "intel_perceptual_server";
-    arm_publisher_.publish(arms_msg);
+    arms_publisher_.publish(arms_msg);
   }
 
-  ui->labelImageDisplay->setPixmap(pixmap);
+  if(!ui->checkBoxScale->isChecked())
+    ui->labelImageDisplay->setPixmap(pixmap);
+  else
+    ui->labelImageDisplay->setPixmap(pixmap.scaled(ui->labelImageDisplay->size(), Qt::KeepAspectRatio));
 
 
 

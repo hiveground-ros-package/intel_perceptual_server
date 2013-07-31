@@ -102,7 +102,7 @@ private:
   PXCGesture::GeoNode geo_nodes_[2][11];
   PXCGesture::Gesture gestures_[2];
 
-  ros::Publisher arm_publisher_;
+  ros::Publisher arms_publisher_;
 };
 
 #endif // INTEL_PERCEPTUAL_SERVER_H
