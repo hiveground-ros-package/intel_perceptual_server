@@ -43,7 +43,9 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   ui(new Ui::MainWindow),
   quit_thread_(false),
   nhp_("~"),
-  pipe_line_stop_(true)
+  pipe_line_stop_(true),
+  left_gesture_found_(false),
+  right_gesture_found_(false)
 {
   ui->setupUi(this);
   
@@ -56,7 +58,7 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
   }
 
   populateDeviceMenu();
-  populateModuleMenu();
+  //populateModuleMenu();
   mode_menu_action_group_ = new QActionGroup(this);
   ui->actionLive->setActionGroup(mode_menu_action_group_);
   ui->actionPlayback->setActionGroup(mode_menu_action_group_);
@@ -70,6 +72,10 @@ IntelPerceptualServer::IntelPerceptualServer(QMainWindow *parent) :
 
   connect(this, SIGNAL(dataRetrieved(QImage)), this, SLOT(updateUI(QImage)));
   connect(this, SIGNAL(statusChanged(QString)), ui->statusbar, SLOT(showMessage(QString)));
+
+  clear_gesture_image_timer_ = new QTimer(this);
+  clear_gesture_image_timer_->start(1000);
+  connect(clear_gesture_image_timer_, SIGNAL(timeout()), this, SLOT(clearGestureImage()));
 
 
   arms_publisher_ = nhp_.advertise<interaction_msgs::Arms>("arms", 1);
@@ -145,22 +151,79 @@ void IntelPerceptualServer::updateUI(const QImage &image)
     {
       if (geo_nodes_[i][j].body <= 0)
         continue;
-      int sz = (j == 0) ? 10 : ((geo_nodes_[i][j].radiusImage>5)?(int)geo_nodes_[i][j].radiusImage:5);
-      (j < 6 || j == 0) ? ((j == 0) ? pen.setColor(Qt::blue) : pen.setColor(Qt::red)) : ((j == 10) ? pen.setColor(Qt::yellow) : pen.setColor(Qt::green));
-      painter.setPen(pen);
-      int x, y;
-      if(ui->radioButtonDisplayColor->isChecked() || ui->radioButtonDisplayProjection->isChecked())
+
+
+      if(ui->checkBoxGeoNode->isChecked())
       {
-        x=(int)geo_nodes_color_[i][j].positionImage.x;
-        y=(int)geo_nodes_color_[i][j].positionImage.y;
-      }
-      else
-      {
-        x=(int)geo_nodes_[i][j].positionImage.x;
-        y=(int)geo_nodes_[i][j].positionImage.y;
+        int sz = (j == 0) ? 10 : ((geo_nodes_[i][j].radiusImage>5)?(int)geo_nodes_[i][j].radiusImage:5);
+        (j < 6 || j == 0) ? ((j == 0) ? pen.setColor(Qt::blue) : pen.setColor(Qt::red)) : ((j == 10) ? pen.setColor(Qt::yellow) : pen.setColor(Qt::green));
+        painter.setPen(pen);
+        int x, y;
+        if(ui->radioButtonDisplayColor->isChecked() || ui->radioButtonDisplayProjection->isChecked())
+        {
+          x=(int)geo_nodes_color_[i][j].positionImage.x;
+          y=(int)geo_nodes_color_[i][j].positionImage.y;
+        }
+        else
+        {
+          x=(int)geo_nodes_[i][j].positionImage.x;
+          y=(int)geo_nodes_[i][j].positionImage.y;
+        }
+
+        painter.drawEllipse(x-sz, y-sz, sz, sz);
       }
 
-      painter.drawEllipse(x-sz, y-sz, sz, sz);
+      QLabel *label = (i == 0) ? ui->labelGestureLeft : ui->labelGestureRight;
+      QPixmap icon_pixmap;
+      arm_msg.gesture = gestures_[i].label;
+      switch(gestures_[i].label)
+      {
+        case PXCGesture::Gesture::LABEL_NAV_SWIPE_LEFT:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/swipe_left.png");
+          break;
+        case PXCGesture::Gesture::LABEL_NAV_SWIPE_RIGHT:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/swipe_right.png");
+          break;
+        case PXCGesture::Gesture::LABEL_NAV_SWIPE_UP:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/swipe_up.png");
+          break;
+        case PXCGesture::Gesture::LABEL_NAV_SWIPE_DOWN:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/swipe_down.png");
+          break;
+        case PXCGesture::Gesture::LABEL_HAND_WAVE:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/wave.png");
+          break;
+        case PXCGesture::Gesture::LABEL_HAND_CIRCLE:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/circle.png");
+          break;
+        case PXCGesture::Gesture::LABEL_POSE_THUMB_UP:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/thumb_up.png");
+          break;
+        case PXCGesture::Gesture::LABEL_POSE_THUMB_DOWN:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/thumb_down.png");
+          break;
+        case PXCGesture::Gesture::LABEL_POSE_PEACE:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/peace.png");
+          break;
+        case PXCGesture::Gesture::LABEL_POSE_BIG5:
+          if(ui->checkBoxGesture->isChecked()) icon_pixmap.load(":/gestures/big5.png");
+          break;
+        default:
+          if(i == 0)
+            left_gesture_found_ = false;
+          else
+            right_gesture_found_ = false;
+          break;
+      }
+
+      if(!icon_pixmap.isNull() && ui->checkBoxGesture->isChecked())
+      {
+        if(i == 0)
+          left_gesture_found_ = true;
+        else
+          right_gesture_found_ = true;
+        label->setPixmap(icon_pixmap.scaled(label->width()-2, label->height()-2));
+      }
 
       if(j == 0) //plam
       {
@@ -183,7 +246,26 @@ void IntelPerceptualServer::updateUI(const QImage &image)
         arm_msg.arm.translation.z = geo_nodes_[i][j].positionWorld.z;
         arm_msg.arm.rotation.w = 1;
       }
+    }
 
+    if(ui->checkBoxOpenness->isChecked())
+    {
+      if (geo_nodes_[0][0].body > 0)
+      {
+        int y=(100 - geo_nodes_[0][0].openness) * (pixmap.height()-1) / 100;
+        if (y>=0 && y<pixmap.height())
+        {
+          painter.drawLine(pixmap.width()-2, pixmap.height() - 1, pixmap.width()-2, pixmap.height()-y);
+        }
+      }
+      if (geo_nodes_[1][0].body > 0)
+      {
+        int y=(100 - geo_nodes_[1][0].openness)*(pixmap.height()-1) / 100;
+        if (y>=0 && y<pixmap.height())
+        {
+          painter.drawLine(2, pixmap.height() - 1, 2, pixmap.height()-y);
+        }
+      }
     }
 
     //publish only arm with plam
@@ -193,10 +275,13 @@ void IntelPerceptualServer::updateUI(const QImage &image)
     }
   }
 
+
   if(ui->radioButtonDisplayColor->isChecked() || ui->radioButtonDisplayProjection->isChecked())
-  {
-    if(face_detection_data_.size() != 0)
+  {    
+    if(ui->checkBoxFace->isChecked() && face_detection_data_.size() != 0)
     {
+      pen.setColor(Qt::green);
+      painter.setPen(pen);
       for(int i = 0; i < face_detection_data_.size(); i++)
         painter.drawRect(face_detection_data_[i].rectangle.x,
                          face_detection_data_[i].rectangle.y,
@@ -204,71 +289,48 @@ void IntelPerceptualServer::updateUI(const QImage &image)
                          face_detection_data_[i].rectangle.h);
     }
   }
-
-  for (int i = 0; i < 2; i++)
-  {
-    QLabel *label = (i == 0) ? ui->labelGestureLeft : ui->labelGestureRight;
-    QPixmap icon_pixmap;
-    if (gestures_[i].body <= 0)
-    {
-      continue;
-    }
-
-    switch(gestures_[i].label)
-    {
-      case PXCGesture::Gesture::LABEL_NAV_SWIPE_LEFT:
-        icon_pixmap.load(":/gestures/swipe_left.png");
-        break;
-      case PXCGesture::Gesture::LABEL_NAV_SWIPE_RIGHT:
-        icon_pixmap.load(":/gestures/swipe_right.png");
-        break;
-      case PXCGesture::Gesture::LABEL_NAV_SWIPE_UP:
-        icon_pixmap.load(":/gestures/swipe_up.png");
-        break;
-      case PXCGesture::Gesture::LABEL_NAV_SWIPE_DOWN:
-        icon_pixmap.load(":/gestures/swipe_down.png");
-        break;
-      case PXCGesture::Gesture::LABEL_HAND_WAVE:
-        icon_pixmap.load(":/gestures/wave.png");
-        break;
-      case PXCGesture::Gesture::LABEL_HAND_CIRCLE:
-        icon_pixmap.load(":/gestures/circle.png");
-        break;
-      case PXCGesture::Gesture::LABEL_POSE_THUMB_UP:
-        icon_pixmap.load(":/gestures/thumb_up.png");
-        break;
-      case PXCGesture::Gesture::LABEL_POSE_THUMB_DOWN:
-        icon_pixmap.load(":/gestures/thumb_down.png");
-        break;
-      case PXCGesture::Gesture::LABEL_POSE_PEACE:
-        icon_pixmap.load(":/gestures/peace.png");
-        break;
-      case PXCGesture::Gesture::LABEL_POSE_BIG5:
-        icon_pixmap.load(":/gestures/big5.png");
-        break;
-      default:
-        icon_pixmap.load(":/gestures/none.png");
-        break;
-    }
-    if(!icon_pixmap.isNull())
-      label->setPixmap(icon_pixmap.scaled(48,48));
-  }
   mutex_.unlock();
 
-  if(arms_publisher_.getNumSubscribers() != 0)
+  if(arms_publisher_.getNumSubscribers() != 0 && arms_msg.arms.size() != 0)
   {
     arms_msg.header.stamp = ros::Time::now();
     arms_msg.header.frame_id = "intel_perceptual_server";
     arms_publisher_.publish(arms_msg);
   }
 
-  if(!ui->checkBoxScale->isChecked())
-    ui->labelImageDisplay->setPixmap(pixmap);
+  QPixmap result;
+  if(ui->checkBoxMirror->isChecked())
+  {
+    result = pixmap.transformed(QTransform().scale(-1, 1));
+  }
   else
-    ui->labelImageDisplay->setPixmap(pixmap.scaled(ui->labelImageDisplay->size(), Qt::KeepAspectRatio));
+  {
+    result = pixmap;
+  }
+
+  if(!ui->checkBoxScale->isChecked())
+    ui->labelImageDisplay->setPixmap(result);
+  else
+    ui->labelImageDisplay->setPixmap(result.scaled(ui->labelImageDisplay->size(), Qt::KeepAspectRatio));
 
 
 
+}
+
+void IntelPerceptualServer::clearGestureImage()
+{
+  static QPixmap pixmap(":/gestures/none.png");
+  if(!left_gesture_found_)
+  {
+    ui->labelGestureLeft->setPixmap(pixmap.scaled(ui->labelGestureLeft->width()-2,ui->labelGestureLeft->height()-2));
+    left_gesture_found_ = true; //toggle
+  }
+
+  if(!right_gesture_found_)
+  {
+    ui->labelGestureRight->setPixmap(pixmap.scaled(ui->labelGestureRight->width()-2,ui->labelGestureRight->height()-2));
+    right_gesture_found_ = true; //toggle
+  }
 }
 
 
@@ -364,9 +426,9 @@ void IntelPerceptualServer::pipeLine()
     pp->EnableImage(PXCImage::COLOR_FORMAT_RGB24, 1280, 720);
 
   pp->EnableImage(PXCImage::COLOR_FORMAT_DEPTH);
-  pp->EnableGesture((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
-  //pp->EnableFaceLocation((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
-  //pp->EnableFaceLandmark((pxcCHAR*)module_menu_action_group_->checkedAction()->text().utf16());
+  pp->EnableGesture();
+  pp->EnableFaceLocation();
+  //pp->EnableFaceLandmark();
 
   /* Init */
   Q_EMIT statusChanged("Init Started");
@@ -431,7 +493,7 @@ void IntelPerceptualServer::pipeLine()
       PXCGesture *gesture = pp->QueryGesture();
       PXCImage *depth = pp->QueryImage(PXCImage::IMAGE_TYPE_DEPTH);
       PXCImage *rgb = pp->QueryImage(PXCImage::IMAGE_TYPE_COLOR);
-      //PXCFaceAnalysis *face = pp->QueryFace();
+      PXCFaceAnalysis *face = pp->QueryFace();
 
       mutex_.lock();
       gesture->QueryNodeData(0,PXCGesture::GeoNode::LABEL_BODY_HAND_PRIMARY,10,geo_nodes_[0]);
@@ -452,7 +514,7 @@ void IntelPerceptualServer::pipeLine()
         }
       }
 
-      /*
+
       face_detection_data_.clear();
       PXCFaceAnalysis::Detection *faced=face->DynamicCast<PXCFaceAnalysis::Detection>();
       for (int i=0;;i++)
@@ -463,9 +525,6 @@ void IntelPerceptualServer::pipeLine()
         if (faced->QueryData(fid,&data)>=PXC_STATUS_NO_ERROR)
           face_detection_data_.push_back(data);
       }
-      */
-
-
       mutex_.unlock();
 
 

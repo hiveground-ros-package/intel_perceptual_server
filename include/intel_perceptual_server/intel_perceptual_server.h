@@ -68,6 +68,7 @@ protected Q_SLOTS:
   void on_actionRecord_triggered(bool checked);
 
   void updateUI(const QImage& image);
+  void clearGestureImage();
 
 Q_SIGNALS:
   void dataRetrieved(QImage image);
@@ -96,6 +97,9 @@ private:
   QMutex mutex_;
   QString record_file_name_;
   QString playback_file_name_;
+  QTimer* clear_gesture_image_timer_;
+  bool left_gesture_found_;
+  bool right_gesture_found_;
 
   QVector<QAction*> device_menu_actions_;
   QActionGroup *device_menu_action_group_;

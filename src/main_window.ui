@@ -37,46 +37,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>819</width>
-     <height>24</height>
-    </rect>
-   </property>
-   <widget class="QMenu" name="menuDevice">
-    <property name="title">
-     <string>Device</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menuModule">
-    <property name="title">
-     <string>Module</string>
-    </property>
-   </widget>
-   <widget class="QMenu" name="menuMode">
-    <property name="title">
-     <string>Mode</string>
-    </property>
-    <addaction name="actionLive"/>
-    <addaction name="actionPlayback"/>
-    <addaction name="actionRecord"/>
-   </widget>
-   <widget class="QMenu" name="menuResolution">
-    <property name="title">
-     <string>Resolution</string>
-    </property>
-    <addaction name="action640x360"/>
-    <addaction name="action640x480"/>
-    <addaction name="action1280x720"/>
-   </widget>
-   <addaction name="menuDevice"/>
-   <addaction name="menuModule"/>
-   <addaction name="menuMode"/>
-   <addaction name="menuResolution"/>
-  </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget">
    <property name="minimumSize">
@@ -163,7 +123,7 @@
            <string>Depth</string>
           </property>
           <property name="checked">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -178,6 +138,9 @@
          <widget class="QRadioButton" name="radioButtonDisplayColor">
           <property name="text">
            <string>Color</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -223,6 +186,26 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="checkBoxGesture">
+          <property name="text">
+           <string>Gesture</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBoxFace">
+          <property name="text">
+           <string>Face</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QCheckBox" name="checkBoxGeoNode">
           <property name="text">
            <string>GeoNode</string>
@@ -233,19 +216,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QCheckBox" name="checkBoGesture">
+         <widget class="QCheckBox" name="checkBoxOpenness">
           <property name="text">
-           <string>Gesture</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="checkBoxParam">
-          <property name="text">
-           <string>Param</string>
+           <string>Openness</string>
           </property>
           <property name="checked">
            <bool>true</bool>
@@ -287,6 +260,49 @@
      </item>
     </layout>
    </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>819</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuDevice">
+    <property name="title">
+     <string>Device</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuMode">
+    <property name="title">
+     <string>Mode</string>
+    </property>
+    <addaction name="actionLive"/>
+    <addaction name="actionPlayback"/>
+    <addaction name="actionRecord"/>
+   </widget>
+   <widget class="QMenu" name="menuResolution">
+    <property name="title">
+     <string>Resolution</string>
+    </property>
+    <addaction name="action640x360"/>
+    <addaction name="action640x480"/>
+    <addaction name="action1280x720"/>
+   </widget>
+   <widget class="QMenu" name="menuModule">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Module</string>
+    </property>
+   </widget>
+   <addaction name="menuDevice"/>
+   <addaction name="menuResolution"/>
+   <addaction name="menuModule"/>
+   <addaction name="menuMode"/>
   </widget>
   <action name="actionLive">
    <property name="checkable">
