@@ -227,22 +227,22 @@ void IntelPerceptualServer::updateUI(const QImage &image)
 
       if(j == 0) //plam
       {
-        arm_msg.hand.translation.x = geo_nodes_[i][j].positionWorld.x;
-        arm_msg.hand.translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.hand.translation.x = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.hand.translation.y = -geo_nodes_[i][j].positionWorld.x;
         arm_msg.hand.translation.z = geo_nodes_[i][j].positionWorld.z;
         arm_msg.hand.rotation.w = 1;
       }
       else if(j < 6) //fingers
       {
-        arm_msg.fingers[j-1].translation.x = geo_nodes_[i][j].positionWorld.x;
-        arm_msg.fingers[j-1].translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.fingers[j-1].translation.x = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.fingers[j-1].translation.y = -geo_nodes_[i][j].positionWorld.x;
         arm_msg.fingers[j-1].translation.z = geo_nodes_[i][j].positionWorld.z;
         arm_msg.fingers[j-1].rotation.w = 1;
       }
       else if(j == 10) //arm
       {
-        arm_msg.arm.translation.x = geo_nodes_[i][j].positionWorld.x;
-        arm_msg.arm.translation.y = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.arm.translation.x = geo_nodes_[i][j].positionWorld.y;
+        arm_msg.arm.translation.y = -geo_nodes_[i][j].positionWorld.x;
         arm_msg.arm.translation.z = geo_nodes_[i][j].positionWorld.z;
         arm_msg.arm.rotation.w = 1;
       }
