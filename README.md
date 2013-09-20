@@ -6,7 +6,9 @@ Intel Perceptual Computing SDK server
 Tested in Windows 7 64 bits.
 
 ### Install and set up ROS
-1. Instal Intel perceptual SDK and connect sensor
+1. Instal
+  * Intel perceptual SDK and connect sensor
+  * Qt 4.8.5 (http://qt-project.org/downloads)
 2. Install ROS for Windows (http://wiki.ros.org/hydro/Installation/Windows)
 3. Setup catkin workspace (http://wiki.ros.org/win_ros/hydro/Msvc%20SDK)
   * `> mkdir C:/work`
@@ -21,6 +23,9 @@ Tested in Windows 7 64 bits.
 5. Build 
   * `> cd C:/work/overlay`
   * `> winros_make`
+6. Setup hostname and clear firewall
+  * `c:\windows\system32\drivers\etc\hosts`
+  * Add Linux machine hostname and IP and make sure that you can `ping` the Linux machin PC with name
   
 
 ## Setup on Ubuntu 
@@ -50,6 +55,10 @@ Tested in Ubuntu 12.04 64 bits (Kernel 3.8.0-30 with AMD HD5700).
 6. Make sure about rosdep
   * `$ sudo rosdep init`
   * `$ rosdep update``
+7. Setup hostname and clear firewall
+  * `\etc\hosts`
+  * Add Windows machine hostname and IP and make sure that you can `ping` the Windows machine with name
+
 
 ### Build additional ROS dependencies
 1. Clone github source to ~/catkin_ros/src/
@@ -75,3 +84,28 @@ Tested in Ubuntu 12.04 64 bits (Kernel 3.8.0-30 with AMD HD5700).
   * `$ cd ~/catkin_ws`
   * `$ catkin_make`
 
+## Working with gestures
+### Start a helping hand simulator on Linux
+Open a new terminal for each line.
+
+1. `$ roscore`
+2. `$ roslaunch midem_common transform_intel.launch`
+3. `$ roslaunch midem_common bringup.launch xacro:=urdf/midem_with_solder_lead.xacro`
+4. `$ roslaunch midem_with_solder_lead_moveit_config midem_with_solder_lead_moveit_planning_execution.launch`
+5. `$ roslaunch midem_user_interaction user_interaction_intel.launch`
+6. `$ rosrun rqt_interactive_probe rqt_interactive_probe`
+
+This should bring up rviz (ROS 3D visualization) screen and a setting windows "rqt_interactive_probe"
+
+### Start a intel_perception_server on Windows
+Open a command window
+
+1. `> set ROS_MASTER_URI=http://linux_hostname:11311`
+2. `> cd C:\work\overlay\devel\lib\intel_perceptual_server`
+3. `> intel_perceptual_server.exe`
+4.  Click start on Inter Percaptual Server windows. 
+
+This should start the camera with face tracking and hand gesture detection. 
+
+### Controlling the robot
+At this point, when moving hand in front of the camera, hand gesture should appear in the Inter Percaptual Server windows. The server will transmit hand positions to the Linux machine and they will appear as red dots in rviz screen. Pleaes see the video for usage details.
