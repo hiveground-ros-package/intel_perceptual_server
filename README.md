@@ -2,7 +2,29 @@
 
 Intel Perceptual Computing SDK server
 
-## Setup on Ubuntu (12.04 is prefered)
+## Setup on Windows 
+Tested in Windows 7 64 bits.
+
+### Install and set up ROS
+1. Instal Intel perceptual SDK and connect sensor
+2. Install ROS for Windows (http://wiki.ros.org/hydro/Installation/Windows)
+3. Setup catkin workspace (http://wiki.ros.org/win_ros/hydro/Msvc%20SDK)
+  * `> mkdir C:/work`
+  * `> cd C:/work`
+  * `> winros_init_workspace overlay`
+  * `> cd C:/work/overlay`
+  * `> winros_init_build --underlays="C:/opt/ros/hydro/x86"`
+  * `> winros_make`
+4. Clone githun source into C:/work/overlay/src directory (with the installed git bash)
+  * `git clone https://github.com/hiveground-ros-package/hiveground_messages.git`
+  * `git clone https://github.com/hiveground-ros-package/intel_perceptual_server.git`
+5. Build 
+  * `> cd C:/work/overlay`
+  * `> winros_make`
+  
+
+## Setup on Ubuntu 
+Tested in Ubuntu 12.04 64 bits (Kernel 3.8.0-30 with AMD HD5700).
 ### Install and set up ROS
 1. Install ROS Groovy (http://wiki.ros.org/groovy/Installation/Ubuntu)
 2. Install the following packages
